@@ -1,9 +1,13 @@
-"""MCP client adapters used by the TripMate specialist agents."""
+"""MCP client helpers for TripMate AI.
+
+The AviationStack integration is local instead of launching the third-party
+``aviationstack-mcp`` package through uvx. This avoids the stdio/session failure
+seen when multiple specialist branches request tools concurrently.
+"""
 
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,7 +29,7 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 WEATHER_SERVER_PATH = BASE_DIR / "custom_weather_mcp_server.py"
-UVX_COMMAND = shutil.which("uvx") or "uvx"
+AVIATION_SERVER_PATH = BASE_DIR / "custom_aviation_mcp_server.py"
 
 
 def _require_env(name: str, value: str | None) -> str:
@@ -42,28 +46,24 @@ def _subprocess_env(**updates: str | None) -> dict[str, str]:
     return env
 
 
-# The client itself is cheap to construct; credentials are validated only when
-# the corresponding server is requested, so unrelated features remain usable.
-client = MultiServerMCPClient(
-    {
-        "tavily": {
-            "transport": "streamable_http",
-            "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY or ''}",
-        },
-        "aviationstack": {
-            "transport": "stdio",
-            "command": UVX_COMMAND,
-            "args": ["aviationstack-mcp"],
-            "env": _subprocess_env(AVIATION_STACK_API_KEY=AVIATION_STACK_API_KEY),
-        },
-        "weather": {
-            "transport": "stdio",
-            "command": sys.executable,
-            "args": [str(WEATHER_SERVER_PATH)],
-            "env": _subprocess_env(OPENWEATHER_API_KEY=OPENWEATHER_API_KEY),
-        },
-    }
-)
+client = MultiServerMCPClient({
+    "tavily": {
+        "transport": "streamable_http",
+        "url": f"https://mcp.tavily.com/mcp/?tavilyApiKey={TAVILY_API_KEY or ''}",
+    },
+    "aviationstack": {
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": [str(AVIATION_SERVER_PATH)],
+        "env": _subprocess_env(AVIATION_STACK_API_KEY=AVIATION_STACK_API_KEY),
+    },
+    "weather": {
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": [str(WEATHER_SERVER_PATH)],
+        "env": _subprocess_env(OPENWEATHER_API_KEY=OPENWEATHER_API_KEY),
+    },
+})
 
 
 async def _get_server_tool(server_name: str, tool_name: str):
@@ -71,8 +71,8 @@ async def _get_server_tool(server_name: str, tool_name: str):
         _require_env("TAVILY_API_KEY", TAVILY_API_KEY)
     elif server_name == "aviationstack":
         _require_env("AVIATION_STACK_API_KEY", AVIATION_STACK_API_KEY)
-        if shutil.which("uvx") is None and UVX_COMMAND == "uvx":
-            raise RuntimeError("uvx was not found. Install uv and ensure `uvx` is on PATH.")
+        if not AVIATION_SERVER_PATH.is_file():
+            raise FileNotFoundError(f"Aviation MCP server not found: {AVIATION_SERVER_PATH}")
     elif server_name == "weather":
         _require_env("OPENWEATHER_API_KEY", OPENWEATHER_API_KEY)
         if not WEATHER_SERVER_PATH.is_file():
@@ -91,7 +91,6 @@ async def _get_server_tool(server_name: str, tool_name: str):
 
 
 async def get_all_tools() -> None:
-    """Print an independent health check for every configured MCP server."""
     for server_name in ("tavily", "aviationstack", "weather"):
         try:
             tools = await client.get_tools(server_name=server_name)
@@ -112,12 +111,7 @@ async def aviation_mcp_call(tool_name: str, tool_args: dict[str, Any] | None = N
 
 
 async def weather_mcp_search(city: str):
-    tool = await _get_server_tool("weather", "get_current_weather")
-    return await tool.ainvoke({"city": city.strip()})
-
-
-async def forecast_mcp_search(city: str):
-    tool = await _get_server_tool("weather", "get_forecast")
+    tool = await _get_server_tool("weather", "get_weather_bundle")
     return await tool.ainvoke({"city": city.strip()})
 
 
@@ -129,22 +123,20 @@ def _get_llm() -> ChatGroq:
     if _llm is None:
         key = _require_env("GROQ_API_KEY", GROQ_API_KEY)
         _llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
             api_key=key,
+            temperature=0,
+            max_retries=0,
         )
     return _llm
 
 
 def extract_destination(query: str) -> str:
-    """Extract a destination only when the supervisor did not already provide one."""
-    prompt = f"""
-Extract the primary destination city or country from this travel request.
-Return only the destination name, with no explanation.
-If no destination is identifiable, return UNKNOWN.
+    prompt = f"""Extract the primary destination city or country.
+Return only the destination name. If none is identifiable, return UNKNOWN.
 
 Travel request:
-{query}
-"""
+{query}"""
     response = _get_llm().invoke([HumanMessage(content=prompt)])
     destination = str(response.content).strip().strip('"').strip()
     if not destination or destination.upper() == "UNKNOWN":

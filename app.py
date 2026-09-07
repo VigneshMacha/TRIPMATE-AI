@@ -20,7 +20,7 @@ logger = logging.getLogger("tripmate")
 app = FastAPI(
     title="TripMate AI",
     description="Parallel multi-agent travel planner with MCP, LangGraph and human approval.",
-    version="3.0.0",
+    version="3.1.0",
 )
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

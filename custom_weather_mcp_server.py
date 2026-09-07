@@ -143,6 +143,17 @@ def get_forecast(
     }
 
 
+@mcp.tool()
+def get_weather_bundle(city: str) -> dict[str, Any]:
+    """Return current weather and a compact five-entry forecast in one MCP call."""
+    city = city.strip()
+    if not city:
+        raise ValueError("city cannot be empty")
+
+    current = get_current_weather(city)
+    forecast = get_forecast(city)
+    return {"current": current, "forecast": forecast}
+
 if __name__ == "__main__":
     # mcp_client.py launches this as a stdio subprocess.
     mcp.run(
