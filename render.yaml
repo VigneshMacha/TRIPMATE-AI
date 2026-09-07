@@ -10,10 +10,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.5"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: tripmate-ai-db
-          property: connectionString
       - key: GROQ_API_KEY
         sync: false
       - key: MISTRAL_API_KEY
@@ -33,10 +29,3 @@ services:
       - key: MISTRAL_MAX_OUTPUT_TOKENS
         value: "1000"
 
-databases:
-  - name: tripmate-ai-db
-    region: singapore
-    plan: free
-    databaseName: tripmate
-    user: tripmate
-    postgresMajorVersion: "17"
