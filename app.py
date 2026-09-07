@@ -1,7 +1,6 @@
 """FastAPI application for TripMate AI."""
-
 from __future__ import annotations
-
+import os
 import logging
 from pathlib import Path
 
@@ -13,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+
+
 BASE_DIR = Path(__file__).resolve().parent
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tripmate")
@@ -20,7 +21,7 @@ logger = logging.getLogger("tripmate")
 app = FastAPI(
     title="TripMate AI",
     description="Three-LLM parallel multi-agent travel planner with MCP, LangGraph and human approval.",
-    version="3.3.0",
+    version="3.8.0",
 )
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -112,4 +113,10 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True
+    )
