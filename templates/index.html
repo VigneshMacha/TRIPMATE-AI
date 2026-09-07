@@ -3,144 +3,133 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="TripMate AI professional travel planning workspace">
-  <title>TripMate AI — Travel Planning Workspace</title>
+  <meta name="description" content="TripMate — a research-first travel planning workspace.">
+  <title>TripMate — Plan the trip, not the paperwork</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">TM</div>
-        <div>
-          <div class="brand-title">TripMate AI</div>
-          <div class="brand-subtitle">Travel planning workspace</div>
-        </div>
-      </div>
-
-      <div class="topbar-actions">
-        <div class="system-status"><span class="status-dot"></span> Systems operational</div>
-        <div class="thread-chip"><span>Thread</span><strong id="activeThreadBadge">Idle</strong></div>
-        <button id="resetThreadBtn" class="button button-ghost" type="button">New trip</button>
+      <a class="wordmark" href="#top" aria-label="TripMate home">tripmate</a>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a href="#planner">Planner</a>
+        <a href="#plan">Your plan</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="live-indicator"><i></i> Research online</span>
+        <button id="resetThreadBtn" class="text-button" type="button">New trip</button>
       </div>
     </header>
 
-    <main class="workspace">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">MULTI-AGENT TRAVEL PLANNER</p>
-          <h1>Plan with confidence.</h1>
-          <p class="hero-copy">TripMate coordinates specialist research in parallel, synthesizes a practical itinerary, and pauses for your approval before finalizing it.</p>
+    <main id="top">
+      <section class="hero-section" id="planner">
+        <div class="hero-copy">
+          <p class="eyebrow">TRAVEL PLANNING, DONE PROPERLY</p>
+          <h1>Go somewhere<br><em>worth remembering.</em></h1>
+          <p class="hero-lede">Tell TripMate where you want to go and how you like to travel. It researches the details in parallel, then turns the evidence into a trip you can actually use.</p>
         </div>
-        <div class="architecture-summary">
-          <span>LangGraph</span><span>MCP</span><span>PostgreSQL</span><span>Human review</span>
+        <div class="hero-note">
+          <span class="note-line"></span>
+          <p>Research first.<br>Itinerary second.<br><strong>You decide.</strong></p>
         </div>
       </section>
 
-      <div class="dashboard-grid">
-        <aside class="left-column">
-          <section class="panel request-panel">
-            <div class="panel-heading">
-              <div>
-                <p class="panel-kicker">REQUEST</p>
-                <h2>Tell us about your trip</h2>
-              </div>
-              <span class="secure-label">Guardrails enabled</span>
-            </div>
-
+      <section class="planner-layout">
+        <aside class="brief-column">
+          <div class="section-index">01 <span>YOUR BRIEF</span></div>
+          <div class="brief-card">
             <form id="travelForm">
-              <label class="field-label" for="userPrompt">Travel brief</label>
-              <textarea id="userPrompt" rows="8" maxlength="8000" required placeholder="Example: Plan a 5-day trip from Bengaluru to Tokyo in November for two people. I prefer central hotels, a moderate budget, and a relaxed itinerary."></textarea>
-              <div class="field-meta"><span>Be specific about dates, origin, budget, preferences or constraints when known.</span><span id="charCount">0 / 8000</span></div>
-              <button id="submitBtn" class="button button-primary button-wide" type="submit">
+              <label for="userPrompt">What are you planning?</label>
+              <textarea id="userPrompt" maxlength="8000" required placeholder="A long weekend in Kyoto for two. Coming from Bengaluru, moderate budget, love food and quiet neighborhoods. Prefer a relaxed pace."></textarea>
+              <div class="input-footer">
+                <span>Dates, budget, pace and preferences help.</span>
+                <span id="charCount">0 / 8000</span>
+              </div>
+              <button id="submitBtn" class="primary-button" type="submit">
                 <span id="submitSpinner" class="spinner hidden"></span>
-                <span id="submitLabel">Create travel plan</span>
+                <span id="submitLabel">Build my trip</span>
+                <span class="button-arrow">↗</span>
               </button>
             </form>
-
-            <div class="example-prompts">
-              <button type="button" data-prompt="Plan a 4-day trip to Singapore from Kolkata for two people with a mid-range budget.">Singapore • 4 days</button>
-              <button type="button" data-prompt="Plan a relaxed 6-day Japan trip focused on food, culture and efficient public transport.">Japan • food & culture</button>
+            <div class="prompt-row" aria-label="Example trips">
+              <button type="button" data-prompt="Plan a 4-day trip to Singapore from Kolkata for two people with a mid-range budget.">Singapore · 4 days</button>
+              <button type="button" data-prompt="Plan a relaxed 6-day Japan trip focused on food, culture and efficient public transport.">Japan · food + culture</button>
             </div>
-          </section>
+          </div>
 
-          <section class="panel pipeline-panel">
-            <div class="panel-heading compact">
-              <div><p class="panel-kicker">ORCHESTRATION</p><h2>Execution status</h2></div>
-              <span id="graphStatusChip" class="status-badge status-idle">Idle</span>
-            </div>
-
-            <div class="pipeline" aria-live="polite">
-              <div id="step-guardrails" class="pipeline-step">
-                <div class="step-number">01</div><div><strong>Input guardrail</strong><span>Travel relevance and safety validation</span></div>
-              </div>
-              <div id="step-supervisor" class="pipeline-step">
-                <div class="step-number">02</div><div><strong>Supervisor</strong><span>Selects only required specialists</span></div>
-              </div>
-              <div id="step-specialists" class="pipeline-step">
-                <div class="step-number">03</div><div><strong>Specialist research</strong><span>Flight, hotel, weather and budget branches run in parallel</span></div>
-              </div>
-              <div id="step-synthesis" class="pipeline-step">
-                <div class="step-number">04</div><div><strong>Itinerary synthesis</strong><span>Combines evidence into a reviewable draft</span></div>
-              </div>
-              <div id="step-hitl" class="pipeline-step">
-                <div class="step-number">05</div><div><strong>Human review</strong><span>Your approval controls finalization</span></div>
-              </div>
-            </div>
-
-            <div class="agent-section">
-              <div class="section-label">Selected specialists</div>
-              <div id="agentList" class="agent-list"><span class="muted">No run yet</span></div>
-            </div>
-          </section>
+          <div class="trust-note">
+            <span class="trust-mark">✓</span>
+            <div><strong>Evidence-led planning</strong><p>Live-looking research is clearly separated from estimates and assumptions.</p></div>
+          </div>
         </aside>
 
-        <section class="right-column">
-          <section class="panel output-panel">
-            <div class="panel-heading output-heading">
-              <div>
-                <p class="panel-kicker">TRAVEL PLAN</p>
-                <h2>Draft itinerary</h2>
-              </div>
-              <div class="output-actions">
-                <span id="outputStateBadge" class="status-badge status-idle">Waiting</span>
-                <button id="copyOutputBtn" class="button button-small button-ghost" type="button">Copy</button>
-              </div>
+        <section class="work-column" id="plan">
+          <div class="workspace-head">
+            <div>
+              <div class="section-index">02 <span>TRIP WORKSPACE</span></div>
+              <h2 id="workspaceTitle">Your trip, taking shape</h2>
             </div>
+            <div class="workspace-status">
+              <span id="outputStateBadge" class="state-pill idle">Ready</span>
+              <button id="copyOutputBtn" class="icon-text-button" type="button">Copy plan</button>
+            </div>
+          </div>
 
-            <div id="planMeta" class="plan-meta hidden">
-              <div><span>Destination</span><strong id="metaDestination">—</strong></div>
-              <div><span>Duration</span><strong id="metaDuration">—</strong></div>
-              <div><span>Budget</span><strong id="metaBudget">—</strong></div>
-              <div><span>Style</span><strong id="metaStyle">—</strong></div>
-            </div>
+          <div id="planMeta" class="trip-facts hidden">
+            <div><span>Destination</span><strong id="metaDestination">—</strong></div>
+            <div><span>Length</span><strong id="metaDuration">—</strong></div>
+            <div><span>Budget</span><strong id="metaBudget">—</strong></div>
+            <div><span>Travel style</span><strong id="metaStyle">—</strong></div>
+          </div>
 
-            <div id="itineraryContainer" class="output-content empty-state">
-              <div class="empty-icon">✦</div>
-              <h3>Your itinerary will appear here</h3>
-              <p>Submit a travel brief to start the multi-agent planning workflow.</p>
+          <div id="itineraryContainer" class="plan-canvas empty-state">
+            <div class="empty-scenery" aria-hidden="true"><span></span><i></i><b></b></div>
+            <p class="canvas-kicker">READY WHEN YOU ARE</p>
+            <h3>Start with a feeling,<br>not a spreadsheet.</h3>
+            <p>Give us the rough idea. TripMate will work out the practical pieces around it.</p>
+          </div>
+
+          <section id="researchPanel" class="research-panel hidden">
+            <div class="research-header">
+              <div><span class="section-index">03 <span>RESEARCH TRAIL</span></span><h3>What shaped this plan</h3></div>
+              <span id="agentCount" class="muted-small"></span>
             </div>
+            <div id="researchGrid" class="research-grid"></div>
           </section>
 
-          <section id="hitlPanel" class="panel review-panel hidden">
-            <div class="review-accent"></div>
-            <div class="panel-heading compact">
-              <div><p class="panel-kicker">ACTION REQUIRED</p><h2>Review the draft</h2></div>
-              <span class="review-state">Checkpoint paused</span>
+          <section id="hitlPanel" class="decision-panel hidden">
+            <div class="decision-copy">
+              <span class="decision-kicker">YOUR DECISION</span>
+              <h3>Does this feel like your trip?</h3>
+              <p>The draft is paused here on purpose. Approve it to finalize, or tell TripMate what should change.</p>
             </div>
-            <p class="review-copy">The plan is intentionally paused here. Approve it to finalize, or request changes and TripMate will regenerate the itinerary using your feedback.</p>
-            <label class="field-label" for="reviewFeedback">Revision notes <span>(required for changes)</span></label>
-            <textarea id="reviewFeedback" rows="4" maxlength="4000" placeholder="For example: reduce the hotel budget, add more cultural activities, and keep evenings free."></textarea>
-            <div class="review-actions">
-              <button id="rejectBtn" class="button button-secondary" type="button">Request changes</button>
-              <button id="approveBtn" class="button button-success" type="button">Approve & finalize</button>
+            <div class="decision-form">
+              <label for="reviewFeedback">Want anything different? <span>Optional when approving</span></label>
+              <textarea id="reviewFeedback" rows="3" maxlength="4000" placeholder="More local food, less rushing, cheaper hotels…"></textarea>
+              <div class="decision-actions">
+                <button id="rejectBtn" class="secondary-button" type="button">Request changes</button>
+                <button id="approveBtn" class="primary-button compact" type="button">Approve & finalize <span>↗</span></button>
+              </div>
             </div>
           </section>
         </section>
-      </div>
+      </section>
+
+      <section class="process-section">
+        <div class="section-index">04 <span>HOW IT WORKS</span></div>
+        <div class="process-grid">
+          <article><span>01</span><h3>Understand</h3><p>Your brief is checked for travel intent and distilled into useful constraints.</p></article>
+          <article><span>02</span><h3>Research</h3><p>Flights, stays, weather and budget evidence are gathered through specialist tools.</p></article>
+          <article><span>03</span><h3>Compose</h3><p>Research is synthesized into a practical itinerary rather than a wall of generic text.</p></article>
+          <article><span>04</span><h3>Review</h3><p>You get the final say before the trip moves from draft to approved plan.</p></article>
+        </div>
+      </section>
     </main>
 
-    <footer class="footer">TripMate AI · LangGraph orchestration · MCP tool integration · Human-in-the-loop approval</footer>
+    <footer class="footer"><span>tripmate</span><span>Research-led travel planning · Human approval built in</span></footer>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
