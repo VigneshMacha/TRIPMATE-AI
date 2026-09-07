@@ -131,7 +131,10 @@ def _json_from_llm(text: str) -> dict[str, Any]:
     if start == -1 or end == -1 or end < start:
         raise ValueError("The model did not return a JSON object.")
 
-    return json.loads(text[start : end + 1])
+    payload = json.loads(text[start : end + 1])
+    if not isinstance(payload, dict):
+        raise ValueError("The model returned JSON, but not a JSON object.")
+    return payload
 
 
 def _empty_constraints() -> dict[str, Any]:
@@ -143,6 +146,25 @@ def _empty_constraints() -> dict[str, Any]:
         "travel_style": "",
         "special_preferences": [],
     }
+
+
+def _normalize_constraints(value: Any) -> dict[str, Any]:
+    """Normalize supervisor output so malformed LLM fields cannot poison state."""
+    constraints = _empty_constraints()
+    if not isinstance(value, dict):
+        return constraints
+
+    for key in constraints:
+        if key not in value:
+            continue
+        if key == "special_preferences":
+            raw = value[key]
+            if isinstance(raw, list):
+                constraints[key] = [str(item).strip() for item in raw if str(item).strip()]
+        else:
+            raw = value[key]
+            constraints[key] = str(raw).strip() if raw is not None else ""
+    return constraints
 
 
 # =========================
@@ -250,10 +272,7 @@ User request:
         if "itinerary_agent" not in selected_agents:
             selected_agents.append("itinerary_agent")
 
-        constraints = _empty_constraints()
-        parsed_constraints = parsed.get("trip_constraints", {})
-        if isinstance(parsed_constraints, dict):
-            constraints.update(parsed_constraints)
+        constraints = _normalize_constraints(parsed.get("trip_constraints", {}))
 
         reasoning = str(parsed.get("reasoning", "")).strip()
         llm_calls += 1
@@ -440,6 +459,7 @@ Forecast:
                 content="Weather information processed."
             )
         ],
+        "llm_calls": state.get("llm_calls", 0) + 1,
     }
 
 
@@ -789,6 +809,12 @@ def _serialize_result(
 
 def run_travel_agent(user_input: str, thread_id: str | None = None):
     """Start a new travel-planning run and pause at human approval."""
+    user_input = (user_input or "").strip()
+    if not user_input:
+        raise ValueError("Travel request cannot be empty.")
+    if len(user_input) > 8000:
+        raise ValueError("Travel request is too long. Please keep it under 8,000 characters.")
+
     if not thread_id:
         thread_id = f"user_{uuid.uuid4().hex}"
 
@@ -826,10 +852,16 @@ def resume_travel_agent(
     feedback: str = "",
 ):
     """Resume the paused LangGraph thread after human review."""
-    if not thread_id:
+    if not thread_id or not thread_id.strip():
         raise ValueError("thread_id is required to resume a travel plan.")
+    if len(thread_id) > 200:
+        raise ValueError("thread_id is invalid.")
 
-    config = {"configurable": {"thread_id": thread_id}}
+    feedback = (feedback or "").strip()
+    if len(feedback) > 4000:
+        raise ValueError("Feedback is too long. Please keep it under 4,000 characters.")
+
+    config = {"configurable": {"thread_id": thread_id.strip()}}
     result = travel_graph.invoke(
         Command(
             resume={

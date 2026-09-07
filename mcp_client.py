@@ -32,6 +32,9 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 WEATHER_SERVER_PATH = BASE_DIR / "custom_weather_mcp_server.py"
+if not WEATHER_SERVER_PATH.is_file():
+    # Backward compatibility with the original typo in older project copies.
+    WEATHER_SERVER_PATH = BASE_DIR / "custom_wether_mcp_server.py"
 UVX_COMMAND = shutil.which("uvx") or "uvx"
 
 

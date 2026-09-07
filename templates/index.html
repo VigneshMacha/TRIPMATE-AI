@@ -1,136 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TripMate AI</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripMate | Multi-Agent Orchestration Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              800: '#1e293b',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+  </style>
 </head>
-<body>
-  <div class="page-bg">
-    <div class="gradient-circle circle-1"></div>
-    <div class="gradient-circle circle-2"></div>
-    <div class="gradient-circle circle-3"></div>
-  </div>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-slate-200">
 
-  <main class="app-container">
-    <section class="hero-section">
-      <div class="badge">
-        ✈️ TripMate AI — LangGraph, MCP, Supervisor, Guardrails & HITL
+  <!-- Top Navigation Bar -->
+  <header class="h-16 border-b border-slate-200 bg-white sticky top-0 z-30 px-6 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <div class="h-8 w-8 rounded bg-slate-950 flex items-center justify-center text-white font-bold text-sm tracking-wide">
+        TM
       </div>
-      <h1>Plan Your Perfect Trip with AI</h1>
-      <p>
-        Search flights, discover hotels, check weather, assess your budget,
-        and review the AI-generated draft before the final itinerary is created.
-      </p>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-semibold text-sm tracking-tight text-slate-900">TripMate Agent Console</h1>
+          <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">LangGraph HITL</span>
+        </div>
+        <p class="text-xs text-slate-500">Autonomous supervisor & MCP adapter runtime</p>
+      </div>
+    </div>
+
+    <!-- System Indicators -->
+    <div class="flex items-center space-x-6 text-xs">
+      <div class="flex items-center space-x-2">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span class="text-slate-600 font-medium">Weather MCP: Active</span>
+      </div>
+
+      <div class="h-4 w-px bg-slate-200"></div>
+
+      <div class="flex items-center space-x-2 font-mono text-slate-500">
+        <span>Thread:</span>
+        <span id="activeThreadBadge" class="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-700">idle</span>
+      </div>
+
+      <button id="resetThreadBtn" class="text-slate-600 hover:text-slate-950 font-medium transition-colors">
+        Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 grid grid-cols-12 max-w-[1600px] w-full mx-auto p-6 gap-6">
+
+    <!-- Left Column: Input Dispatcher & Execution Pipeline (5 cols) -->
+    <section class="col-span-12 lg:col-span-5 flex flex-col space-y-6">
+      
+      <!-- Input Panel -->
+      <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Dispatch Prompt</h2>
+          <span class="text-xs text-slate-400">Supervisor Gateway</span>
+        </div>
+
+        <form id="travelForm" class="space-y-4">
+          <div>
+            <textarea 
+              id="userPrompt"
+              rows="5" 
+              required
+              placeholder="e.g., Plan a 3-day tech conference trip to Tokyo starting November 10th. Need check-ins for outdoor networking..."
+              class="w-full text-sm rounded-md border border-slate-200 bg-slate-50/50 p-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-950 focus:border-slate-950 focus:bg-white transition"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-400">Strict safety guardrails applied</span>
+            <button 
+              type="submit" 
+              id="submitBtn"
+              class="inline-flex items-center justify-center px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-medium rounded transition disabled:opacity-50"
+            >
+              <span id="submitSpinner" class="hidden mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+              <span>Execute Orchestrator</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- LangGraph Pipeline Status Panel -->
+      <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-xs flex-1">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Execution Graph Trace</h2>
+          <span id="graphStatusChip" class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">IDLE</span>
+        </div>
+
+        <div class="space-y-4 font-mono text-xs">
+          <!-- Step 1 -->
+          <div id="step-guardrails" class="flex items-start space-x-3 text-slate-400">
+            <div class="mt-0.5 h-4 w-4 rounded-full border border-current flex items-center justify-center text-[9px]">1</div>
+            <div>
+              <p class="font-medium text-slate-700">Input Guardrails</p>
+              <p class="text-[11px] text-slate-400">Evaluates safe boundaries & travel relevance</p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div id="step-supervisor" class="flex items-start space-x-3 text-slate-400">
+            <div class="mt-0.5 h-4 w-4 rounded-full border border-current flex items-center justify-center text-[9px]">2</div>
+            <div>
+              <p class="font-medium text-slate-700">Supervisor Routing</p>
+              <p class="text-[11px] text-slate-400">Dispatches sub-agents and tool calls</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div id="step-mcp" class="flex items-start space-x-3 text-slate-400">
+            <div class="mt-0.5 h-4 w-4 rounded-full border border-current flex items-center justify-center text-[9px]">3</div>
+            <div>
+              <p class="font-medium text-slate-700">MCP Client (Weather Adapter)</p>
+              <p class="text-[11px] text-slate-400">Queries local weather tool context</p>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div id="step-hitl" class="flex items-start space-x-3 text-slate-400">
+            <div class="mt-0.5 h-4 w-4 rounded-full border border-current flex items-center justify-center text-[9px]">4</div>
+            <div>
+              <p class="font-medium text-slate-700">Human-In-The-Loop Checkpoint</p>
+              <p class="text-[11px] text-slate-400">Halts execution for explicit supervisor approval</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <section class="planner-card">
-      <div class="card-header">
-        <div>
-          <h2>Where do you want to go?</h2>
-          <p>
-            Example: Plan a complete 7 days Japan trip from Bangladesh under 2 lakhs.
-          </p>
-        </div>
-        <div class="status-pill">
-          <span class="status-dot"></span>
-          Online
-        </div>
-      </div>
+    <!-- Right Column: Itinerary Output & HITL Action Gateway (7 cols) -->
+    <section class="col-span-12 lg:col-span-7 flex flex-col space-y-6">
 
-      <div class="input-area">
-        <textarea
-          id="userInput"
-          placeholder="Plan a complete 7 days Japan trip including flights, hotels and sightseeing under 2 lakhs..."
-        ></textarea>
-        <button id="sendBtn" onclick="sendMessage()">
-          <span id="btnText">Generate Draft</span>
-          <span id="btnLoader" class="loader hidden"></span>
-        </button>
-      </div>
-
-      <div class="quick-prompts">
-        <button onclick="setPrompt('Plan a complete 7 days Japan trip from Bangladesh including flights, hotels and sightseeing under 2 lakhs.')">
-          Japan Trip
-        </button>
-        <button onclick="setPrompt('Plan a 5 days Dubai trip from Dhaka with flights, hotels and sightseeing.')">
-          Dubai Trip
-        </button>
-        <button onclick="setPrompt('Plan a 7 days Thailand trip from Bangladesh with budget hotels and sightseeing.')">
-          Thailand Trip
-        </button>
-        <button onclick="setPrompt('Give me all country flight info.')">
-          Global Flights
-        </button>
-      </div>
-    </section>
-
-    <section id="workflowSection" class="workflow-section hidden">
-      <div class="workflow-header">
-        <div>
-          <span class="eyebrow">Supervisor Agent</span>
-          <h2>Execution Plan</h2>
+      <!-- Plan Output Viewport -->
+      <div class="bg-white border border-slate-200 rounded-lg p-6 flex-1 shadow-xs flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+          <div class="flex items-center space-x-3">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Synthesized Plan Output</h2>
+            <span id="outputStateBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-500">No active run</span>
+          </div>
+          <button id="copyOutputBtn" class="text-xs text-slate-400 hover:text-slate-700 transition">Copy Raw</button>
         </div>
-        <span id="guardrailBadge" class="guardrail-badge">Guardrail passed</span>
-      </div>
-      <p id="supervisorReasoning" class="supervisor-reasoning"></p>
-      <div id="agentChips" class="agent-chips"></div>
-    </section>
 
-    <section id="resultSection" class="result-section hidden">
-      <div class="result-header">
-        <div>
-          <h2 id="resultTitle">Your AI Travel Plan</h2>
-          <p id="threadInfo">Thread ID: -</p>
-        </div>
-        <div class="result-actions">
-          <button class="copy-btn" onclick="copyResult()">Copy</button>
-          <button class="download-btn" onclick="downloadPDF()">Download PDF</button>
+        <!-- Plan Stream Content -->
+        <div id="itineraryContainer" class="flex-1 overflow-y-auto text-sm leading-relaxed text-slate-700 whitespace-pre-line font-mono bg-slate-50/60 p-4 rounded border border-slate-100 min-h-[350px]">
+Plan output will render here once the multi-agent graph completes orchestration...
         </div>
       </div>
 
-      <div id="pdfContent" class="pdf-content">
-        <h1 class="pdf-title">AI Travel Plan</h1>
-        <div id="resultBox" class="result-box"></div>
-      </div>
-    </section>
+      <!-- Human-In-The-Loop (HITL) Review Panel -->
+      <div id="hitlPanel" class="hidden bg-amber-50/50 border border-amber-200 rounded-lg p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <div class="h-2 w-2 rounded-full bg-amber-500"></div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-900">Human Approval Required</h3>
+          </div>
+          <span class="text-[11px] text-amber-700">Execution paused at checkpoint</span>
+        </div>
 
-    <section id="approvalSection" class="approval-section hidden">
-      <div class="approval-icon">👤</div>
-      <div class="approval-content">
-        <span class="eyebrow">Human-in-the-Loop</span>
-        <h2>Review the draft itinerary</h2>
-        <p id="approvalRequest">
-          Approve the draft or provide feedback before the final plan is generated.
+        <p class="text-xs text-amber-800 mb-3">
+          Inspect the drafted itinerary above. You can either approve the current itinerary or request amendments back to the planner agent.
         </p>
 
         <textarea
-          id="approvalFeedback"
-          class="feedback-input"
-          placeholder="Add revision feedback, for example: reduce the hotel cost and add one free day..."
+          id="reviewFeedback"
+          rows="2"
+          placeholder="Optional feedback: e.g., Replace the day 2 dinner with vegetarian spots, shift schedule 1 hour earlier..."
+          class="w-full text-xs rounded border border-amber-300 bg-white p-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500 mb-3"
         ></textarea>
 
-        <div class="approval-actions">
-          <button id="approveBtn" class="approve-btn" onclick="submitApproval(true)">
-            Approve & Generate Final
+        <div class="flex items-center justify-end space-x-3">
+          <button 
+            type="button" 
+            id="rejectBtn" 
+            class="px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-medium rounded transition"
+          >
+            Request Revision
           </button>
-          <button id="reviseBtn" class="revise-btn" onclick="submitApproval(false)">
-            Revise Using Feedback
+          <button 
+            type="button" 
+            id="approveBtn" 
+            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded transition"
+          >
+            Approve Plan
           </button>
         </div>
       </div>
-    </section>
 
-    <section id="errorBox" class="error-box hidden"></section>
+    </section>
   </main>
 
-  <footer>
-    Built with FastAPI, LangGraph, Groq, PostgreSQL, Tavily, AviationStack and MCP
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="/static/script.js"></script>
 </body>
 </html>
